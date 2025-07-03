@@ -1,5 +1,5 @@
 [phases.setup]
-nixpkgs = ["python311", "gcc"]
+nixpkgs = ["python311Full", "gcc"]
 
 [phases.install]
 cmds = [
