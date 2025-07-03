@@ -9,4 +9,4 @@ cmds = [
 ]
 
 [phases.start]
-cmds = ["/opt/venv/bin/gunicorn main:app --bind 0.0.0.0:${PORT}"]
+cmds = ["/opt/venv/bin/python main.py"]
