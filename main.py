@@ -1,33 +1,35 @@
-from flask import Flask, request, abort
+from flask import Flask, request, abort, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from openai import OpenAI
-from dotenv import load_dotenv
 import os
 import threading
 
-# .envファイルを読み込む（Railwayでは不要だがローカルで必要）
-load_dotenv()
+# ✅ Railway 以外の環境では .env を読み込む
+if not os.getenv("RAILWAY_ENVIRONMENT"):
+    from dotenv import load_dotenv
+    load_dotenv()
 
 app = Flask(__name__)
 
-# 環境変数を読み込み
+# ✅ 環境変数を取得
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
+OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")  # 任意：必要な場合のみ設定
 
-# デバッグ出力（デプロイ後は削除してOK）
-print("✅ OPENAI_API_KEY:", OPENAI_API_KEY)
-print("✅ LINE_CHANNEL_ACCESS_TOKEN:", LINE_CHANNEL_ACCESS_TOKEN)
-print("✅ LINE_CHANNEL_SECRET:", LINE_CHANNEL_SECRET)
+# ✅ OpenAIクライアント初期化
+client = OpenAI(
+    api_key=OPENAI_API_KEY,
+    organization=OPENAI_ORG_ID if OPENAI_ORG_ID else None
+)
 
-# インスタンス生成
+# ✅ LINE BOT 初期化
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
-client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ChatGPT応答処理
+# ✅ ChatGPT処理
 def reply_with_chatgpt(event):
     user_text = event.message.text
     prompt = f"冷蔵庫の中にある材料で作れるレシピを教えてください。材料: {user_text}。レシピは簡潔に説明してください。"
@@ -38,8 +40,9 @@ def reply_with_chatgpt(event):
             messages=[{"role": "user", "content": prompt}]
         )
         reply_text = response.choices[0].message.content.strip()
+        print("✅ OpenAI応答:", reply_text)
     except Exception as e:
-        print("❌ OpenAIエラー:", e)
+        print("❌ OpenAIエラー:", repr(e))
         reply_text = "申し訳ありません、レシピの取得に失敗しました。"
 
     try:
@@ -48,9 +51,9 @@ def reply_with_chatgpt(event):
             TextSendMessage(text=reply_text)
         )
     except Exception as e:
-        print("❌ LINE返信エラー:", e)
+        print("❌ LINE返信エラー:", repr(e))
 
-# Webhookエンドポイント
+# ✅ LINE Webhookエンドポイント
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers.get('X-Line-Signature')
@@ -63,9 +66,20 @@ def callback():
 
     return 'OK'
 
-# メッセージ受信処理
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     thread = threading.Thread(target=reply_with_chatgpt, args=(event,))
     thread.start()
+
+# ✅ 疎通確認エンドポイント（ブラウザ用）
+@app.route("/test-openai", methods=["GET"])
+def test_openai():
+    try:
+        models = client.models.list()
+        model_ids = [m.id for m in models.data]
+        print("✅ OpenAIモデル取得成功:", model_ids)
+        return jsonify({"status": "ok", "models": model_ids})
+    except Exception as e:
+        print("❌ OpenAIモデル取得エラー:", repr(e))
+        return jsonify({"status": "error", "error": str(e)}), 500
 
