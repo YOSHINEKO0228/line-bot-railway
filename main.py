@@ -84,10 +84,12 @@ def test_openai():
         print("❌ OpenAIモデル取得エラー:", repr(e))
         return jsonify({"status": "error", "error": str(e)}), 500
 
+# ✅ ルート確認（←ここを app.run より前に移動）
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ Flaskは起動しています"
+
 # Railway or ローカル開発用の起動
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
-@app.route("/", methods=["GET"])
-def home():
-    return "✅ Flaskは起動しています"
