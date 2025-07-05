@@ -6,30 +6,30 @@ from openai import OpenAI
 import os
 import threading
 
-# ✅ Railway 以外の環境では .env を読み込む
+# Railway以外の環境では .env を読み込む
 if not os.getenv("RAILWAY_ENVIRONMENT"):
     from dotenv import load_dotenv
     load_dotenv()
 
 app = Flask(__name__)
 
-# ✅ 環境変数を取得
+# 環境変数の取得
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")  # 任意：必要な場合のみ設定
+OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")  # 任意
 
-# ✅ OpenAIクライアント初期化
+# OpenAIクライアント初期化
 client = OpenAI(
     api_key=OPENAI_API_KEY,
     organization=OPENAI_ORG_ID if OPENAI_ORG_ID else None
 )
 
-# ✅ LINE BOT 初期化
+# LINE BOT 初期化
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# ✅ ChatGPT処理
+# ChatGPTによる返信処理
 def reply_with_chatgpt(event):
     user_text = event.message.text
     prompt = f"冷蔵庫の中にある材料で作れるレシピを教えてください。材料: {user_text}。レシピは簡潔に説明してください。"
@@ -53,7 +53,7 @@ def reply_with_chatgpt(event):
     except Exception as e:
         print("❌ LINE返信エラー:", repr(e))
 
-# ✅ LINE Webhookエンドポイント
+# LINE Webhookエンドポイント
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers.get('X-Line-Signature')
@@ -66,12 +66,13 @@ def callback():
 
     return 'OK'
 
+# LINEのメッセージイベント受信処理
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     thread = threading.Thread(target=reply_with_chatgpt, args=(event,))
     thread.start()
 
-# ✅ 疎通確認エンドポイント（ブラウザ用）
+# 疎通確認用エンドポイント
 @app.route("/test-openai", methods=["GET"])
 def test_openai():
     try:
@@ -82,4 +83,8 @@ def test_openai():
     except Exception as e:
         print("❌ OpenAIモデル取得エラー:", repr(e))
         return jsonify({"status": "error", "error": str(e)}), 500
+
+# Railway or ローカル開発用の起動
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
