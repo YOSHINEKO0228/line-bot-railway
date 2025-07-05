@@ -23,12 +23,14 @@ def reply_with_chatgpt(event):
         )
         reply_text = response["choices"][0]["message"]["content"].strip()
     except Exception as e:
+        print("🔴 OpenAIエラー:", e)  # ←ここを追加！
         reply_text = "申し訳ありません、レシピの取得に失敗しました。"
 
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(text=reply_text)
     )
+
 
 @app.route("/callback", methods=['POST'])
 def callback():
