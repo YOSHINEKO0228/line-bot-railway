@@ -33,6 +33,15 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 # ユーザー状態管理（ステップ進行用）
 user_state = {}
 
+# 語尾変換補助関数
+def add_wan_suffix(text):
+    text = text.replace("です。", "だワン！").replace("ます。", "するワン！")
+    text = text.replace("でした。", "だったワン！").replace("ました。", "したワン！")
+    text = text.replace("ください。", "してほしいワン！")
+    text = text.replace("だ。", "だワン！")
+    text = text.replace("ね。", "だワンね！")
+    return text
+
 # ChatGPTでレシピを生成
 def generate_recipe_from_gpt(ingredients):
     prompt = f'''
@@ -55,7 +64,7 @@ def generate_recipe_from_gpt(ingredients):
             messages=[{"role": "user", "content": prompt}]
         )
         content = response.choices[0].message.content.strip()
-        return content
+        return add_wan_suffix(content)
     except Exception as e:
         print("❌ OpenAIエラー:", repr(e))
         return "ごめんなさいわん🐶💦 レシピの取得に失敗しちゃったわん…もう一度試してくれたらうれしいワン🐾"
@@ -90,19 +99,20 @@ def generate_free_chat_response(user_text):
             messages=[{"role": "user", "content": prompt}]
         )
         content = response.choices[0].message.content.strip()
-        return content
+        return add_wan_suffix(content)
     except Exception as e:
         print("❌ 雑談応答エラー:", repr(e))
         return "うまく返せなかったみたいだワン…ごめんなさいわん🐶💦 また聞いてほしいワン！"
 
-# メッセージハンドラーの追加
+# LINEメッセージイベント
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_text = event.message.text
-    if any(word in user_text for word in ["レシピ", "材料", "食材", "作り方", "料理"]):
+    if any(x in user_text for x in ["レシピ", "食材", "作る", "料理", "献立"]):
         reply = generate_recipe_from_gpt(user_text)
     else:
         reply = generate_free_chat_response(user_text)
+
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
 # LINE Webhookエンドポイント
