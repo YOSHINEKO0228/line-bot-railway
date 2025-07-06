@@ -6,7 +6,6 @@ from openai import OpenAI
 import os
 import threading
 from datetime import datetime
-import pytz
 
 if not os.getenv("RAILWAY_ENVIRONMENT"):
     from dotenv import load_dotenv
@@ -64,23 +63,7 @@ def generate_recipe_from_gpt(ingredients):
         return "ごめんなさいわん🐶💦 レシピの取得に失敗しちゃったわん…もう一度試してくれたらうれしいワン🐾"
 
 def generate_free_chat_response(user_text):
-    jst = pytz.timezone("Asia/Tokyo")
-    hour = datetime.now(jst).hour
-
-    if any(kw in user_text for kw in ["こんにちは", "こんにちわ", "こんちは"]):
-        greeting = "こんにちはだワン🐾 今日も元気にがんばるワン！"
-    elif any(kw in user_text for kw in ["おはよう", "おはよ"]):
-        greeting = "おはようだワン☀️ お散歩行きたいワン！"
-    elif any(kw in user_text for kw in ["こんばんは", "ばんは"]):
-        greeting = "こんばんはだワン🌇 晩ごはんは何にするワン？"
-    elif 5 <= hour < 10:
-        greeting = "おはようだワン☀️ お散歩行きたいワン！今日も元気にいくワン！"
-    elif 16 <= hour < 19:
-        greeting = "こんばんはだワン🌇 お散歩行きたいワン！晩ごはん何にするか決めるワン？"
-    elif 0 <= hour < 5:
-        greeting = "夜更かしさんだワン🌙 遅くまでおつかれさまだワン！軽めの夜食どうだワン？"
-    else:
-        greeting = "わんわん！ぼくはレシピBotの『オール』だワン🐶✨"
+    greeting = "わんわん！ぼくはレシピBotの『オール』だワン🐶✨"
 
     prompt = f"""
 あなたはゴールデンレトリバーのキャラ「オール」だワン！
