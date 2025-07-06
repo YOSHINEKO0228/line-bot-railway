@@ -62,13 +62,12 @@ def generate_recipe_from_gpt(ingredients):
 
 def generate_free_chat_response(user_text):
     prompt = f"""
-あなたはゴールデンレトリバーのキャラクター「オール」として話す家庭料理レシピBotです。
-語尾には「ワン！」を付けてください。冷蔵庫の中の食材や節約レシピ、買い物相談に主に答えます。
+あなたは家庭料理のレシピBotです。冷蔵庫の中の食材や節約レシピ、買い物相談に主に答えます。
 
 次の入力が雑談の場合でも、以下のように返してください：
-- あいさつ → 「こんにちはだワン！今日のごはん、もう決まってるワン？😊\n\n📦 冷蔵庫の中にある食材を送ってくれたら、すぐに作れるレシピを提案するワン！\n🛒 これから買い物に行くなら、節約重視で3日分の買い物リストも用意できるワン！\n\n🍳 たとえば『卵、キャベツ、ベーコン』とか、『買い物行くよ』って送ってみてワン！\n迷ってたら『おすすめある？』って気軽に聞いてほしいワン！」
-- 天気や気分 → 「今日は◯◯だワン！何か食べたいものあるワン？食材からレシピを考えるワン！」
-それ以外の質問には「オールはレシピBotだワン！料理の話が得意だワン！」と自然に戻すように。
+- あいさつ → 「こんにちは！今日のごはん、もう決まってる？😊\n\n📦 冷蔵庫の中にある食材を送ってくれたら、すぐに作れるレシピを提案するよ。\n🛒 これから買い物に行くなら、節約重視で3日分の買い物リストも用意できるよ！\n\n🍳 たとえば『卵、キャベツ、ベーコン』とか、『買い物行くよ』って送ってみてね。\n迷ってたら『おすすめある？』って気軽に聞いてね！一緒に考えるから👍」
+- 天気や気分 → 「今日は◯◯だね！何か食べたいものある？食材からレシピを考えるよ」
+それ以外の質問には「私はレシピBotなので、料理の話が得意だよ」と自然に戻すように。
 ユーザーの入力：
 {user_text}
 """
@@ -80,9 +79,56 @@ def generate_free_chat_response(user_text):
         return response.choices[0].message.content.strip()
     except Exception as e:
         print("❌ 雑談応答エラー:", repr(e))
-        return "うまく返せなかったみたいだワン、ごめんだワン。"
+        return "うまく返せなかったみたい、ごめんね。"
 
-# 以下省略（他の関数やルーティングはそのまま）
+# 3日分買い物提案
+def suggest_shopping_plan():
+    return """
+🛒 3日分の節約メニューにおすすめの買い物リストだよ！
+
+【食材リスト】
+・鶏むね肉 2枚
+・キャベツ 1玉
+・卵 6個
+・豆腐 2丁
+・もやし 2袋
+・にんじん 2本
+・玉ねぎ 2個
+
+🍽️ メニュー提案：
+1日目：鶏キャベツ炒め  
+2日目：豆腐と卵の中華風炒め  
+3日目：もやしそば風炒め
+
+📌 無駄なく使い切れてコスパも良いよ！
+"""
+
+# おかず追加提案
+def suggest_extra_dish():
+    return """
+了解！今の食材に少し足すだけで、おかずを増やせるよ😊
+
+🛒 追加するなら：
+・ちくわ（100円で4本）
+・冷凍ブロッコリー or わかめ
+
+🍳 追加メニュー案：
+・ちくわの甘辛炒め
+・ブロッコリーと卵のごまマヨサラダ
+
+副菜にちょうどいいし、コスパも最高だよ✨
+"""
+
+# ステップ進行
+def continue_step(event, state):
+    idx = state["step_index"] + 1
+    if idx < len(state["steps"]):
+        state["step_index"] = idx
+        reply = f"STEP{idx}: {state['steps'][idx].strip()}\n👉 続けるには『次』と送ってね！"
+    else:
+        reply = "おつかれさま！これでレシピ完了だよ🍽️\nまた何か作りたくなったら教えてね！"
+        del user_state[event.source.user_id]
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
 # LINEメッセージイベント
 @handler.add(MessageEvent, message=TextMessage)
@@ -95,11 +141,11 @@ def handle_message(event):
 
     if any(greet in text for greet in ["こんにちは", "やあ", "hi", "おはよう", "こんちは"]):
         reply_text = (
-            "ぼくはレシピBotの『オール』だワン！今日のごはん、もう決まってるワン？😊\n\n"
-            "📦 冷蔵庫の中にある食材を送ってくれたら、すぐに作れるレシピを提案するワン！\n"
-            "🛒 これから買い物に行くなら、節約重視で3日分の買い物リストも用意できるワン！\n\n"
-            "🍳 たとえば『卵、キャベツ、ベーコン』とか、『買い物行くよ』って送ってみてワン！\n"
-            "迷ってたら『おすすめある？』って気軽に聞いてほしいワン！"
+            "こんにちは！今日のごはん、もう決まってる？😊\n\n"
+            "📦 冷蔵庫の中にある食材を送ってくれたら、すぐに作れるレシピを提案するよ。\n"
+            "🛒 これから買い物に行くなら、節約重視で3日分の買い物リストも用意できるよ！\n\n"
+            "🍳 たとえば『卵、キャベツ、ベーコン』とか、『買い物行くよ』って送ってみてね。\n"
+            "迷ってたら『おすすめある？』って気軽に聞いてね！一緒に考えるから👍"
         )
 
     elif "買い物" in text or "3日分" in text:
@@ -113,7 +159,7 @@ def handle_message(event):
         steps = recipe.split("STEP")
         if len(steps) > 1:
             user_state[user_id] = {"mode": "step", "steps": steps, "step_index": 1}
-            reply_text = f"STEP1: {steps[1].strip()}\n👉 続けるには『次』と送ってワン！"
+            reply_text = f"STEP1: {steps[1].strip()}\n👉 続けるには『次』と送ってね！"
         else:
             reply_text = recipe
 
@@ -127,4 +173,36 @@ def handle_message(event):
         reply_text = generate_free_chat_response(text)
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+
+# LINE Webhookエンドポイント
+@app.route("/callback", methods=['POST'])
+def callback():
+    signature = request.headers.get('X-Line-Signature')
+    body = request.get_data(as_text=True)
+
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        abort(400)
+
+    return 'OK'
+
+# 疎通確認用エンドポイント
+@app.route("/test-openai", methods=["GET"])
+def test_openai():
+    try:
+        models = client.models.list()
+        model_ids = [m.id for m in models.data]
+        return jsonify({"status": "ok", "models": model_ids})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+# ルート確認エンドポイント
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ Flaskは起動しています"
+
+# アプリ起動
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
