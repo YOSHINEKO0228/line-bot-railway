@@ -8,27 +8,34 @@ import threading
 from datetime import datetime
 import pytz
 
+# 環境変数読み込み（Railway以外の環境で）
 if not os.getenv("RAILWAY_ENVIRONMENT"):
     from dotenv import load_dotenv
     load_dotenv()
 
+# Flaskアプリ初期化
 app = Flask(__name__)
 
+# 環境変数取得
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")
 
+# OpenAI APIクライアント初期化
 client = OpenAI(
     api_key=OPENAI_API_KEY,
     organization=OPENAI_ORG_ID if OPENAI_ORG_ID else None
 )
 
+# LINE BOT初期化
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
+# BOTの名前
 BOT_NAME = "オール"
 
+# GPT返答に犬語の語尾を付与する関数
 def add_wan_suffix(text):
     text = text.replace("です。", "だワン！").replace("ます。", "するワン！")
     text = text.replace("でした。", "だったワン！").replace("ました。", "したワン！")
@@ -37,6 +44,7 @@ def add_wan_suffix(text):
     text = text.replace("ね。", "だワンね！")
     return text
 
+# レシピ生成（GPT呼び出し）
 def generate_recipe_from_gpt(ingredients):
     prompt = f'''
 あなたは節約上手なゴールデンレトリバーのキャラ「{BOT_NAME}」だワン！
@@ -63,15 +71,30 @@ def generate_recipe_from_gpt(ingredients):
         print("❌ OpenAIエラー:", repr(e))
         return "ごめんなさいわん🐶💦 レシピの取得に失敗しちゃったわん…もう一度試してくれたらうれしいワン🐾"
 
+# 週間献立テンプレート
 def generate_weekly_plan():
     return "1週間分の献立プランを作る準備中だワン！もうちょっと待っててほしいワン！"
 
+# 買い物リストテンプレート
 def generate_shopping_list():
     return "買い物リストを作る準備中だワン！食材を教えてくれるとうれしいワン！"
 
+# 汎用の挨拶メッセージ（自由入力 or Follow時）
 def generate_free_chat_response(user_text):
     jst = pytz.timezone("Asia/Tokyo")
     hour = datetime.now(jst).hour
+
+    help_msg = (
+        f"ぼくはレシピのお手伝い犬『{BOT_NAME}』だワン🐾\n"
+        "冷蔵庫にある食材や、作りたい料理名を送ってくれたら\n"
+        "簡単レシピを提案するワン！\n\n"
+        "たとえば👇\n"
+        "・『卵 キャベツ ツナ』\n"
+        "・『カレー』\n"
+        "・『1週間の献立』\n"
+        "・『買い物リスト』\n"
+        "なんでも聞いてほしいワン🐶✨"
+    )
 
     if any(kw in user_text for kw in ["こんにちは", "こんにちわ", "こんちは"]):
         greeting = "こんにちはだワン🐾 今日も元気にがんばるワン！"
@@ -88,18 +111,22 @@ def generate_free_chat_response(user_text):
     else:
         greeting = f"わんわん！ぼくはレシピのお手伝い犬『{BOT_NAME}』だワン🐶✨"
 
-    return greeting
+    return greeting + "\n\n" + help_msg
 
+# 友だち追加時の挨拶（Followイベント）
 @handler.add(FollowEvent)
 def handle_follow(event):
-    welcome = f"わんわん！ぼくはレシピのお手伝い犬『{BOT_NAME}』だワン🐶✨\n冷蔵庫の中の食材や、買い物の相談もできるレシピBotだワン！\nレシピや買い物に迷ったらいつでも気軽に話しかけてほしいワン！🐾"
+    welcome = generate_free_chat_response("こんにちは")
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=welcome))
 
+# メッセージ受信時のルーティング
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    user_text = event.message.text
+    user_text = event.message.text.strip().lower().replace("　", " ")
 
-    if any(x in user_text for x in ["レシピ", "食材", "作る", "料理", "献立"]):
+    if len(user_text) < 10 and not any(x in user_text for x in ["こんにちは", "こんばんは", "おはよう"]):
+        reply = generate_recipe_from_gpt(user_text)
+    elif any(x in user_text for x in ["レシピ", "食材", "作る", "料理", "献立", "何ができる", "おすすめ", "何作る", "夜ごはん"]):
         reply = generate_recipe_from_gpt(user_text)
     elif "1週間" in user_text:
         reply = generate_weekly_plan()
@@ -110,6 +137,7 @@ def handle_message(event):
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
+# LINE PlatformからのWebhookエントリーポイント
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers.get('X-Line-Signature')
@@ -120,6 +148,7 @@ def callback():
         abort(400)
     return 'OK'
 
+# OpenAI確認用ルート
 @app.route("/test-openai", methods=["GET"])
 def test_openai():
     try:
@@ -129,6 +158,7 @@ def test_openai():
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 
+# 健康チェック
 @app.route("/", methods=["GET"])
 def home():
     return "✅ Flaskは起動していますワン🐶"
