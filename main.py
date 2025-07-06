@@ -6,6 +6,7 @@ from openai import OpenAI
 import os
 import threading
 from datetime import datetime
+import pytz  # 日本時間対応のため追加
 
 # Railway以外の環境では .env を読み込む
 if not os.getenv("RAILWAY_ENVIRONMENT"):
@@ -71,7 +72,9 @@ def generate_recipe_from_gpt(ingredients):
 
 # 雑談対応
 def generate_free_chat_response(user_text):
-    hour = datetime.now().hour
+    jst = pytz.timezone("Asia/Tokyo")
+    hour = datetime.now(jst).hour
+
     if 5 <= hour < 10:
         greeting = "おはようだワン☀️ お散歩行きたいワン！今日も元気にいくワン！"
     elif 16 <= hour < 19:
@@ -146,4 +149,3 @@ def home():
 # アプリ起動
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
