@@ -31,6 +31,7 @@ user_state = {}
 
 BOT_NAME = "オール"
 
+
 def add_wan_suffix(text):
     text = text.replace("です。", "だワン！").replace("ます。", "するワン！")
     text = text.replace("でした。", "だったワン！").replace("ました。", "したワン！")
@@ -38,6 +39,7 @@ def add_wan_suffix(text):
     text = text.replace("だ。", "だワン！")
     text = text.replace("ね。", "だワンね！")
     return text
+
 
 def generate_recipe_from_gpt(ingredients):
     prompt = f'''
@@ -65,6 +67,7 @@ def generate_recipe_from_gpt(ingredients):
         print("❌ OpenAIエラー:", repr(e))
         return "ごめんなさいわん🐶💦 レシピの取得に失敗しちゃったわん…もう一度試してくれたらうれしいワン🐾"
 
+
 def generate_free_chat_response(user_text):
     jst = pytz.timezone("Asia/Tokyo")
     hour = datetime.now(jst).hour
@@ -82,7 +85,7 @@ def generate_free_chat_response(user_text):
     elif 0 <= hour < 5:
         greeting = "夜更かしさんだワン🌙 遅くまでおつかれさまだワン！軽めの夜食どうだワン？"
     else:
-        greeting = f"わんわん！ぼくはレシピBotの『{BOT_NAME}』だワン🐶✨"
+        greeting = f"わんわん！ぼくはレシピのお手伝い犬『{BOT_NAME}』だワン🐶✨"
 
     prompt = f"""
 あなたはゴールデンレトリバーのキャラ「{BOT_NAME}」だワン！
@@ -107,10 +110,12 @@ def generate_free_chat_response(user_text):
         print("❌ 雑談応答エラー:", repr(e))
         return "うまく返せなかったみたいだワン…ごめんなさいわん🐶💦 また聞いてほしいワン！"
 
+
 @handler.add(FollowEvent)
 def handle_follow(event):
-    welcome = f"わんわん！ぼくは『{BOT_NAME}』だワン🐶✨\n冷蔵庫の中の食材や、買い物の相談もできるレシピBotだワン！\nレシピや買い物に迷ったらいつでも気軽に話しかけてほしいワン！🐾"
+    welcome = f"わんわん！ぼくはレシピのお手伝い犬『{BOT_NAME}』だワン🐶✨\n冷蔵庫の中の食材や、買い物の相談もできるレシピBotだワン！\nレシピや買い物に迷ったらいつでも気軽に話しかけてほしいワン！🐾"
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=welcome))
+
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
@@ -122,6 +127,7 @@ def handle_message(event):
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
+
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers.get('X-Line-Signature')
@@ -132,6 +138,7 @@ def callback():
         abort(400)
     return 'OK'
 
+
 @app.route("/test-openai", methods=["GET"])
 def test_openai():
     try:
@@ -141,9 +148,12 @@ def test_openai():
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 
+
 @app.route("/", methods=["GET"])
 def home():
     return "✅ Flaskは起動していますワン🐶"
 
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
