@@ -37,7 +37,7 @@ user_state = {}
 def generate_recipe_from_gpt(ingredients):
     prompt = f'''
 あなたは節約上手なゴールデンレトリバーのキャラ「オール」だワン！
-以下の食材を使って、初心者でも簡単に作れるレシピを日本語で提案してほしいワン。
+以下の食材を使って、初心者でも簡単に作れるレシピを日本語で提案してほしいワン！
 語尾には「だワン」「するワン」など丁寧で元気な語尾をつけて話すワン！
 
 【材料】{ingredients}
@@ -47,7 +47,7 @@ def generate_recipe_from_gpt(ingredients):
 🔥【手順】STEP1〜STEP3で簡潔に  
 💡【ワンポイント】
 
-節約・簡単・おいしいがキーワードだワン。
+節約・簡単・おいしいがキーワードだワン！
 '''
     try:
         response = client.chat.completions.create(
@@ -55,9 +55,6 @@ def generate_recipe_from_gpt(ingredients):
             messages=[{"role": "user", "content": prompt}]
         )
         content = response.choices[0].message.content.strip()
-        content = content.replace("です。", "だワン！").replace("ます。", "するワン！")
-        if not content.endswith("ワン！"):
-            content += "だワン！"
         return content
     except Exception as e:
         print("❌ OpenAIエラー:", repr(e))
@@ -93,9 +90,6 @@ def generate_free_chat_response(user_text):
             messages=[{"role": "user", "content": prompt}]
         )
         content = response.choices[0].message.content.strip()
-        content = content.replace("です。", "だワン！").replace("ます。", "するワン！")
-        if not content.endswith("ワン！"):
-            content += "だワン！"
         return content
     except Exception as e:
         print("❌ 雑談応答エラー:", repr(e))
@@ -132,4 +126,5 @@ def home():
 # アプリ起動
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
