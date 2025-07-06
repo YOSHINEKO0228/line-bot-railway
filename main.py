@@ -56,6 +56,8 @@ def generate_recipe_from_gpt(ingredients):
         )
         content = response.choices[0].message.content.strip()
         content = content.replace("です。", "だワン！").replace("ます。", "するワン！")
+        if not content.endswith("ワン！"):
+            content += "だワン！"
         return content
     except Exception as e:
         print("❌ OpenAIエラー:", repr(e))
@@ -92,6 +94,8 @@ def generate_free_chat_response(user_text):
         )
         content = response.choices[0].message.content.strip()
         content = content.replace("です。", "だワン！").replace("ます。", "するワン！")
+        if not content.endswith("ワン！"):
+            content += "だワン！"
         return content
     except Exception as e:
         print("❌ 雑談応答エラー:", repr(e))
