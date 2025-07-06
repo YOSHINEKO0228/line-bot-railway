@@ -97,8 +97,6 @@ def generate_free_chat_response(user_text):
         print("❌ 雑談応答エラー:", repr(e))
         return "うまく返せなかったみたいだワン…ごめんなさいわん🐶💦 また聞いてほしいワン！"
 
-# TODO: 他の機能（買い物リスト、ステップ実行、かわいい反応追加）をここに追加していくワン！
-
 # LINE Webhookエンドポイント
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -130,3 +128,4 @@ def home():
 # アプリ起動
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
