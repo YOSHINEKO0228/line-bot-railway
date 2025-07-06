@@ -95,6 +95,16 @@ def generate_free_chat_response(user_text):
         print("❌ 雑談応答エラー:", repr(e))
         return "うまく返せなかったみたいだワン…ごめんなさいわん🐶💦 また聞いてほしいワン！"
 
+# メッセージハンドラーの追加
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    user_text = event.message.text
+    if any(word in user_text for word in ["レシピ", "材料", "食材", "作り方", "料理"]):
+        reply = generate_recipe_from_gpt(user_text)
+    else:
+        reply = generate_free_chat_response(user_text)
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
+
 # LINE Webhookエンドポイント
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -126,5 +136,4 @@ def home():
 # アプリ起動
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
 
