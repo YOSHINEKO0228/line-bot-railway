@@ -1,11 +1,12 @@
 from flask import Flask, request, abort, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, FollowEvent
 from openai import OpenAI
 import os
 import threading
 from datetime import datetime
+import pytz
 
 if not os.getenv("RAILWAY_ENVIRONMENT"):
     from dotenv import load_dotenv
@@ -28,6 +29,8 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 user_state = {}
 
+BOT_NAME = "オール"
+
 def add_wan_suffix(text):
     text = text.replace("です。", "だワン！").replace("ます。", "するワン！")
     text = text.replace("でした。", "だったワン！").replace("ました。", "したワン！")
@@ -38,7 +41,7 @@ def add_wan_suffix(text):
 
 def generate_recipe_from_gpt(ingredients):
     prompt = f'''
-あなたは節約上手なゴールデンレトリバーのキャラ「オール」だワン！
+あなたは節約上手なゴールデンレトリバーのキャラ「{BOT_NAME}」だワン！
 以下の食材を使って、初心者でも簡単に作れるレシピを日本語で提案してほしいワン！
 語尾には「だワン」「するワン」など丁寧で元気な語尾をつけて話すワン！
 
@@ -63,10 +66,26 @@ def generate_recipe_from_gpt(ingredients):
         return "ごめんなさいわん🐶💦 レシピの取得に失敗しちゃったわん…もう一度試してくれたらうれしいワン🐾"
 
 def generate_free_chat_response(user_text):
-    greeting = "わんわん！ぼくはレシピBotの『オール』だワン🐶✨"
+    jst = pytz.timezone("Asia/Tokyo")
+    hour = datetime.now(jst).hour
+
+    if any(kw in user_text for kw in ["こんにちは", "こんにちわ", "こんちは"]):
+        greeting = "こんにちはだワン🐾 今日も元気にがんばるワン！"
+    elif any(kw in user_text for kw in ["おはよう", "おはよ"]):
+        greeting = "おはようだワン☀️ お散歩行きたいワン！"
+    elif any(kw in user_text for kw in ["こんばんは", "ばんは"]):
+        greeting = "こんばんはだワン🌇 晩ごはんは何にするワン？"
+    elif 5 <= hour < 10:
+        greeting = "おはようだワン☀️ お散歩行きたいワン！今日も元気にいくワン！"
+    elif 16 <= hour < 19:
+        greeting = "こんばんはだワン🌇 お散歩行きたいワン！晩ごはん何にするか決めるワン？"
+    elif 0 <= hour < 5:
+        greeting = "夜更かしさんだワン🌙 遅くまでおつかれさまだワン！軽めの夜食どうだワン？"
+    else:
+        greeting = f"わんわん！ぼくはレシピBotの『{BOT_NAME}』だワン🐶✨"
 
     prompt = f"""
-あなたはゴールデンレトリバーのキャラ「オール」だワン！
+あなたはゴールデンレトリバーのキャラ「{BOT_NAME}」だワン！
 冷蔵庫の中の食材や節約レシピ、買い物相談に答えるレシピBotだワン！
 語尾には必ず「だワン！」をつけて、やさしく元気いっぱいに話すワン🐾
 
@@ -87,6 +106,11 @@ def generate_free_chat_response(user_text):
     except Exception as e:
         print("❌ 雑談応答エラー:", repr(e))
         return "うまく返せなかったみたいだワン…ごめんなさいわん🐶💦 また聞いてほしいワン！"
+
+@handler.add(FollowEvent)
+def handle_follow(event):
+    welcome = f"わんわん！ぼくは『{BOT_NAME}』だワン🐶✨\n冷蔵庫の中の食材や、買い物の相談もできるレシピBotだワン！\nレシピや買い物に迷ったらいつでも気軽に話しかけてほしいワン！🐾"
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=welcome))
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
@@ -123,4 +147,3 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
