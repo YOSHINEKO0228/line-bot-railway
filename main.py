@@ -35,6 +35,9 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 # BOTの名前
 BOT_NAME = "オール"
 
+# 会話履歴セッション保持用
+user_sessions = {}
+
 # GPT返答に犬語の語尾を付与する関数
 def add_wan_suffix(text):
     text = text.replace("です。", "だワン！").replace("ます。", "するワン！")
@@ -45,31 +48,24 @@ def add_wan_suffix(text):
     return text
 
 # レシピ生成（GPT呼び出し）
-def generate_recipe_from_gpt(ingredients):
-    prompt = f'''
-あなたは節約上手なゴールデンレトリバーのキャラ「{BOT_NAME}」だワン！
-以下の食材を使って、初心者でも簡単に作れるレシピを日本語で提案してほしいワン！
-語尾には「だワン」「するワン」など丁寧で元気な語尾をつけて話すワン！
+def generate_recipe_from_gpt(user_text, user_id):
+    if user_id not in user_sessions:
+        user_sessions[user_id] = []
 
-【材料】{ingredients}
+    user_sessions[user_id].append({"role": "user", "content": user_text})
+    user_sessions[user_id] = user_sessions[user_id][-6:]
 
-🍽️【料理名】  
-🧂【材料（2人分）】  
-🔥【手順】STEP1〜STEP3で簡潔に  
-💡【ワンポイント】
-
-節約・簡単・おいしいがキーワードだワン！
-'''
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}]
+            messages=user_sessions[user_id]
         )
-        content = response.choices[0].message.content.strip()
-        return add_wan_suffix(content)
+        reply_text = response.choices[0].message.content.strip()
+        user_sessions[user_id].append({"role": "assistant", "content": reply_text})
+        return add_wan_suffix(reply_text)
     except Exception as e:
-        print("❌ OpenAIエラー:", repr(e))
-        return "ごめんなさいわん🐶💦 レシピの取得に失敗しちゃったわん…もう一度試してくれたらうれしいワン🐾"
+        print("\u274c OpenAIエラー:", repr(e))
+        return "ごめんなさいわん🐶🚦 レシピの取得に失敗しちゃったわん…もう一度試してくれたらうれしいワン🐾"
 
 # 週間献立テンプレート
 def generate_weekly_plan():
@@ -123,11 +119,15 @@ def handle_follow(event):
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_text = event.message.text.strip().lower().replace("　", " ")
+    user_id = event.source.user_id
 
-    if len(user_text) < 10 and not any(x in user_text for x in ["こんにちは", "こんばんは", "おはよう"]):
-        reply = generate_recipe_from_gpt(user_text)
+    if "リセット" in user_text:
+        user_sessions[user_id] = []
+        reply = "会話履歴をリセットしたワン！また何でも聞いてほしいワン🐶✨"
+    elif len(user_text) < 10 and not any(x in user_text for x in ["こんにちは", "こんばんは", "おはよう"]):
+        reply = generate_recipe_from_gpt(user_text, user_id)
     elif any(x in user_text for x in ["レシピ", "食材", "作る", "料理", "献立", "何ができる", "おすすめ", "何作る", "夜ごはん"]):
-        reply = generate_recipe_from_gpt(user_text)
+        reply = generate_recipe_from_gpt(user_text, user_id)
     elif "1週間" in user_text:
         reply = generate_weekly_plan()
     elif "買い物" in user_text or "リスト" in user_text:
@@ -165,3 +165,4 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
